@@ -298,16 +298,18 @@ class RayDataset(DJDataset):
                                self.num_proc, op.use_cuda())
         num_gpus = get_num_gpus(op, op_proc)
         try:
+            batch_size = getattr(op, 'batch_size',
+                                 1) if op.is_batched_op() else 1
             if isinstance(op, Mapper):
-                dataset = dataset.map_batches(op.process,
-                                              batch_size=1,
-                                              batch_format='pyarrow',
-                                              num_gpus=num_gpus)
+                self.data = self.data.map_batches(op.process,
+                                                  batch_size=batch_size,
+                                                  batch_format='pyarrow',
+                                                  num_gpus=num_gpus)
             elif isinstance(op, Filter):
-                dataset = dataset.map_batches(op.compute_stats,
-                                              batch_size=1,
-                                              batch_format='pyarrow',
-                                              num_gpus=num_gpus)
+                self.data = self.data.map_batches(op.compute_stats,
+                                                  batch_size=batch_size,
+                                                  batch_format='pyarrow',
+                                                  num_gpus=num_gpus)
                 if op.stats_export_path is not None:
                     dataset.write_json(op.stats_export_path, force_ascii=False)
                 dataset = dataset.filter(op.process)
